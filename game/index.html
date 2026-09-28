@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>いろぬけパズル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#241f2c; --tray:#37304a; --tray-edge:#453b5c;
+    --ink:#f4ede2; --ink-dim:#c9bfd6; --accent:#e8b64c;
+    --c-coral:#ef7a63; --c-teal:#45ac9f; --c-gold:#e9bb52; --c-plum:#a480d6; --c-blue:#4f8fd1; --c-leaf:#7db34f;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); overscroll-behavior:none;
+    font-family:'Zen Maru Gothic',-apple-system,'Hiragino Sans',sans-serif; overflow-x:hidden; }
+  :root{ padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+  .wrap{ max-width:460px; margin:0 auto; padding:18px 18px 30px; display:flex; flex-direction:column; align-items:center; gap:12px; }
+  h1{ font-family:'Baloo 2','Zen Maru Gothic',sans-serif; font-weight:800; font-size:26px; margin:4px 0 0; }
+  .sub{ margin:0; font-size:12.5px; color:var(--ink-dim); text-align:center; max-width:320px; line-height:1.6; }
+  .levels{ display:flex; flex-wrap:wrap; justify-content:center; gap:6px; max-width:360px; }
+  .lv-btn{ width:32px; height:32px; border-radius:50%; border:none; font-family:'Baloo 2',sans-serif; font-weight:700; font-size:13px;
+    background:var(--tray-edge); color:var(--ink-dim); cursor:pointer; position:relative; }
+  .lv-btn.done{ color:var(--ink); box-shadow: inset 0 0 0 2px rgba(232,182,76,.55); }
+  .lv-btn.current{ background:var(--accent); color:#2c2413; transform:scale(1.08); box-shadow:none; }
+  .hud{ display:flex; gap:16px; font-family:'Baloo 2','Zen Maru Gothic',sans-serif; align-items:baseline; }
+  .hud .label{ font-size:13px; color:var(--ink-dim); font-weight:500; }
+  .hud .value{ font-size:18px; font-weight:700; color:var(--ink); }
+  .stage{ position:relative; width:min(84vw,330px); aspect-ratio:1/1; margin:16px 0; touch-action:none; }
+  .board-frame{ position:absolute; inset:0; background:var(--tray); border-radius:20px; padding:9px;
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.05), inset 0 -6px 14px rgba(0,0,0,.35), 0 10px 26px rgba(0,0,0,.35); }
+  .board{ position:relative; width:100%; height:100%; overflow:hidden; border-radius:12px; touch-action:none; }
+  .slot{ position:absolute; top:0; left:0; border-radius:8px; background:var(--tray-edge); box-shadow: inset 0 2px 4px rgba(0,0,0,.28); }
+  .slot.wall{ background:#211c29; box-shadow: inset 0 2px 6px rgba(0,0,0,.6); }
+  .cell{ position:absolute; top:0; left:0; border-style:solid; border-color:rgba(20,16,26,.5); overflow:hidden;
+    transition: transform 140ms ease; }
+  .cell .inner{ position:absolute; }
+  .cell.frozen{ background:linear-gradient(135deg,#dff2fb 0%,#b9e0f2 55%,#d4eefa 100%) !important; border-color:rgba(120,170,200,.7); }
+  .tag{ position:absolute; top:0; left:0; width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+    pointer-events:none; transition: transform 140ms ease; z-index:3; font-family:'Baloo 2',sans-serif; }
+  .tag.arrow{ font-size:17px; color:rgba(20,16,26,.55); }
+  .tag.ice{ font-size:22px; font-weight:800; color:#1f3b52; }
+  .gate{ position:absolute; border-radius:7px; display:flex; align-items:center; justify-content:center;
+    color:#241f2c; font-size:11px; font-weight:700; box-shadow:0 3px 6px rgba(0,0,0,.3); z-index:2; }
+  .controls{ display:flex; gap:12px; }
+  .pill-btn{ font-family:'Zen Maru Gothic',sans-serif; font-weight:500; font-size:13px; border:none; border-radius:999px;
+    padding:10px 18px; background:var(--tray-edge); color:var(--ink); cursor:pointer; }
+  .pill-btn:active{ background:var(--accent); color:#2c2413; }
+  .pill-btn:disabled{ opacity:.35; cursor:not-allowed; }
+  .overlay{ position:fixed; inset:0; background:rgba(20,16,26,.72); display:flex; align-items:center; justify-content:center;
+    padding:20px; opacity:0; pointer-events:none; transition:opacity .2s ease; z-index:10; }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+  .card{ background:var(--tray); border-radius:20px; padding:26px 24px; text-align:center; max-width:300px;
+    box-shadow:0 16px 40px rgba(0,0,0,.45); transform:scale(.9); transition:transform .2s ease; }
+  .overlay.show .card{ transform:scale(1); }
+  .card h2{ font-family:'Baloo 2','Zen Maru Gothic',sans-serif; font-size:22px; margin:0 0 6px; }
+  .card p{ font-size:13px; color:var(--ink-dim); margin:0 0 18px; line-height:1.6; }
+  .card .row{ display:flex; gap:10px; justify-content:center; }
+  .card .pill-btn.primary{ background:var(--accent); color:#2c2413; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>いろぬけパズル</h1>
+  <p class="sub">ブロックを同じ色の出口から外に出そう。氷は数字の数だけブロックを出すと溶ける。二重ブロックは外側の色の出口で外側がはがれる。</p>
+  <div class="levels" id="levels"></div>
+  <div class="hud">
+    <span class="label">ステージ <span class="value" id="lvLabel">1</span></span>
+    <span class="label">手数 <span class="value" id="moveLabel">0</span></span>
+  </div>
+  <div class="stage" id="stage"><div class="board-frame" id="frame"><div class="board" id="board"></div></div></div>
+  <div class="controls">
+    <button class="pill-btn" id="undoBtn">ひとつ戻す</button>
+    <button class="pill-btn" id="resetBtn">リセット</button>
+  </div>
+  <p class="sub">ドラッグで自由に動かせます。指を離さずに曲がることもできます。↕↔のブロックはその向きにしか動けません。</p>
+</div>
+<div class="overlay" id="winOverlay"><div class="card">
+  <h2 id="winTitle">クリア!</h2><p id="winText"></p>
+  <div class="row"><button class="pill-btn primary" id="winBtn">次のステージへ</button></div>
+</div></div>
+<div class="overlay" id="stuckOverlay"><div class="card">
+  <h2>動かせません</h2><p>どのブロックも動かせなくなりました。</p>
+  <div class="row"><button class="pill-btn" id="stuckUndo">ひとつ戻す</button><button class="pill-btn primary" id="stuckReset">リセット</button></div>
+</div></div>
+<script>
+(function(){
+"use strict";
+var LEVELS = [{"size":7,"walls":[],"gates":[{"side":"right","start":2,"length":1,"color":"R"}],"pieces":[{"shape":[[0,0],[0,1]],"color":"R","inner":null,"row":2,"col":0,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[],"gates":[{"side":"bottom","start":2,"length":1,"color":"T"},{"side":"left","start":3,"length":1,"color":"G"}],"pieces":[{"shape":[[0,0],[1,0]],"color":"T","inner":null,"row":0,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2]],"color":"G","inner":null,"row":3,"col":0,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[],"gates":[{"side":"top","start":0,"length":2,"color":"P"},{"side":"bottom","start":4,"length":1,"color":"T"}],"pieces":[{"shape":[[0,0],[1,0],[1,1]],"color":"P","inner":null,"row":0,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0]],"color":"T","inner":null,"row":3,"col":4,"dirs":["up","down"],"ice":0}]},{"size":7,"walls":[],"gates":[{"side":"right","start":0,"length":3,"color":"P"},{"side":"top","start":3,"length":1,"color":"R"}],"pieces":[{"shape":[[0,0],[1,0],[2,0],[2,1]],"color":"P","inner":null,"row":0,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0]],"color":"R","inner":null,"row":1,"col":3,"dirs":["up","down"],"ice":0}]},{"size":7,"walls":[[2,0],[3,0]],"gates":[{"side":"bottom","start":4,"length":3,"color":"T"},{"side":"top","start":4,"length":3,"color":"G"},{"side":"left","start":4,"length":2,"color":"P"}],"pieces":[{"shape":[[0,0],[1,0],[2,0],[2,1]],"color":"G","inner":null,"row":2,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,2],[1,0],[1,1],[1,2],[2,1]],"color":"G","inner":null,"row":4,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1],[1,2]],"color":"P","inner":null,"row":1,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0],[2,1],[2,2]],"color":"T","inner":null,"row":4,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,2],[1,0],[1,1],[1,2],[2,0]],"color":"G","inner":null,"row":1,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[1,2]],"color":"P","inner":null,"row":0,"col":2,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[0,5],[0,6],[1,5],[1,6],[2,5],[2,6]],"gates":[{"side":"bottom","start":4,"length":2,"color":"R"},{"side":"left","start":3,"length":2,"color":"T"},{"side":"bottom","start":0,"length":3,"color":"P"}],"pieces":[{"shape":[[0,0],[0,1],[1,0],[2,0]],"color":"R","inner":null,"row":4,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2]],"color":"P","inner":null,"row":4,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1],[1,2],[2,2]],"color":"P","inner":null,"row":1,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[0,3],[1,0]],"color":"T","inner":null,"row":3,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[2,1]],"color":"P","inner":null,"row":0,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,0],[1,2]],"color":"P","inner":null,"row":5,"col":4,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[5,0],[5,1],[6,0],[6,1]],"gates":[{"side":"left","start":1,"length":3,"color":"R"},{"side":"top","start":2,"length":3,"color":"T"},{"side":"right","start":0,"length":3,"color":"G"},{"side":"right","start":4,"length":3,"color":"P"},{"side":"bottom","start":2,"length":2,"color":"P"}],"pieces":[{"shape":[[0,0],[0,1],[0,2],[0,3],[1,2]],"color":"R","inner":null,"row":0,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[1,2],[1,3]],"color":"R","inner":null,"row":1,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,1],[2,0],[2,1],[3,0]],"color":"P","inner":null,"row":3,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,2],[1,0],[1,1],[1,2],[2,1]],"color":"P","inner":null,"row":2,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[0,3]],"color":"G","inner":null,"row":6,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0]],"color":"T","inner":null,"row":1,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[2,0]],"color":"R","inner":null,"row":2,"col":1,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[3,6],[4,6]],"gates":[{"side":"top","start":2,"length":3,"color":"T"},{"side":"right","start":0,"length":3,"color":"G"},{"side":"left","start":4,"length":3,"color":"P"},{"side":"right","start":5,"length":2,"color":"P"}],"pieces":[{"shape":[[0,0],[0,1],[1,1],[1,2],[1,3]],"color":"P","inner":null,"row":0,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[1,1],[2,0]],"color":"T","inner":null,"row":1,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,2],[2,2]],"color":"P","inner":null,"row":0,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[2,1],[2,2]],"color":"G","inner":null,"row":1,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,2],[1,0],[1,1],[1,2],[2,1]],"color":"P","inner":null,"row":3,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1]],"color":"G","inner":null,"row":4,"col":1,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[5,4],[5,5],[5,6],[6,4],[6,5],[6,6]],"gates":[{"side":"left","start":3,"length":3,"color":"R"},{"side":"right","start":1,"length":1,"color":"T"},{"side":"right","start":3,"length":2,"color":"T"},{"side":"top","start":0,"length":3,"color":"G"}],"pieces":[{"shape":[[0,0],[0,1],[1,1],[2,0],[2,1]],"color":"R","inner":null,"row":2,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1],[1,2],[1,3]],"color":"T","inner":null,"row":0,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1],[2,1]],"color":"G","inner":null,"row":0,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,1],[2,1]],"color":"G","inner":null,"row":3,"col":0,"dirs":["up","down"],"ice":0},{"shape":[[0,0],[0,1],[0,2]],"color":"T","inner":null,"row":1,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0],[2,1]],"color":"G","inner":null,"row":4,"col":0,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[3,0],[4,0]],"gates":[{"side":"top","start":1,"length":3,"color":"R"},{"side":"bottom","start":2,"length":3,"color":"G"},{"side":"left","start":0,"length":2,"color":"G"},{"side":"left","start":5,"length":2,"color":"P"}],"pieces":[{"shape":[[0,2],[1,0],[1,1],[1,2]],"color":"P","inner":null,"row":4,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,2],[1,3]],"color":"P","inner":null,"row":3,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1],[1,2]],"color":"G","inner":null,"row":1,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,2],[1,0],[1,1],[1,2]],"color":"R","inner":null,"row":5,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[2,0],[2,1]],"color":"G","inner":null,"row":0,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[0,2],[1,1],[2,0],[2,1]],"color":"R","inner":null,"row":2,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[1,2]],"color":"G","inner":null,"row":5,"col":0,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[0,2],[0,3],[0,4],[1,2],[1,3],[1,4]],"gates":[{"side":"left","start":1,"length":3,"color":"T"},{"side":"left","start":5,"length":2,"color":"G"},{"side":"bottom","start":3,"length":2,"color":"P"}],"pieces":[{"shape":[[0,0],[0,1],[0,2],[1,1],[1,2]],"color":"G","inner":null,"row":5,"col":3,"dirs":["up","down","left","right"],"ice":2},{"shape":[[0,0],[0,1],[0,2],[1,1]],"color":"G","inner":null,"row":2,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1],[2,1]],"color":"P","inner":"T","row":4,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[2,0],[2,1]],"color":"P","inner":null,"row":2,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[1,1]],"color":"P","inner":null,"row":1,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1]],"color":"T","inner":null,"row":4,"col":0,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[3,0],[3,1],[4,0],[4,1],[5,0],[5,1]],"gates":[{"side":"bottom","start":4,"length":3,"color":"R"},{"side":"top","start":2,"length":2,"color":"T"},{"side":"right","start":5,"length":2,"color":"G"},{"side":"top","start":5,"length":2,"color":"P"},{"side":"left","start":0,"length":2,"color":"L"}],"pieces":[{"shape":[[0,0],[1,0],[2,0]],"color":"P","inner":"R","row":4,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[2,1],[3,1]],"color":"P","inner":null,"row":2,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,2],[1,0],[1,1],[1,2],[1,3]],"color":"L","inner":null,"row":0,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[2,1],[3,1]],"color":"T","inner":null,"row":0,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[1,1],[1,2]],"color":"G","inner":null,"row":4,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0]],"color":"R","inner":null,"row":0,"col":0,"dirs":["up","down","left","right"],"ice":3}]},{"size":7,"walls":[[0,0],[1,0],[2,0]],"gates":[{"side":"bottom","start":5,"length":2,"color":"R"},{"side":"left","start":6,"length":1,"color":"T"},{"side":"top","start":3,"length":3,"color":"P"},{"side":"right","start":3,"length":2,"color":"P"}],"pieces":[{"shape":[[0,0],[0,1],[1,1],[2,1],[3,1]],"color":"R","inner":null,"row":3,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1],[1,2]],"color":"P","inner":null,"row":0,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[2,0],[3,0]],"color":"P","inner":null,"row":3,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[0,3]],"color":"P","inner":null,"row":5,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[1,1]],"color":"P","inner":null,"row":3,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2]],"color":"T","inner":"P","row":0,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[2,0],[3,0]],"color":"R","inner":null,"row":0,"col":1,"dirs":["up","down","left","right"],"ice":3}]},{"size":7,"walls":[[0,0],[0,1],[0,2],[2,2]],"gates":[{"side":"right","start":3,"length":3,"color":"R"},{"side":"left","start":4,"length":2,"color":"R"},{"side":"bottom","start":3,"length":3,"color":"T"},{"side":"right","start":0,"length":2,"color":"P"}],"pieces":[{"shape":[[0,0],[0,1],[1,1]],"color":"T","inner":null,"row":2,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0]],"color":"R","inner":null,"row":4,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[1,2],[2,2]],"color":"R","inner":null,"row":0,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[0,3]],"color":"R","inner":null,"row":3,"col":0,"dirs":["left","right"],"ice":3},{"shape":[[0,1],[0,2],[1,0],[1,1]],"color":"P","inner":null,"row":4,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[2,1]],"color":"R","inner":null,"row":4,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[1,1]],"color":"R","inner":null,"row":1,"col":0,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[0,0],[0,1],[3,0],[4,0],[5,0],[5,1],[5,2],[6,1],[6,2]],"gates":[{"side":"top","start":3,"length":2,"color":"R"},{"side":"right","start":5,"length":2,"color":"T"},{"side":"right","start":1,"length":3,"color":"G"},{"side":"bottom","start":4,"length":3,"color":"P"}],"pieces":[{"shape":[[0,1],[1,0],[1,1],[1,2],[2,0]],"color":"P","inner":null,"row":2,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[1,2],[2,0]],"color":"G","inner":null,"row":4,"col":3,"dirs":["up","down","left","right"],"ice":3},{"shape":[[0,0],[1,0],[1,1],[2,1],[3,1]],"color":"R","inner":null,"row":2,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,0],[1,1]],"color":"P","inner":"G","row":1,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0]],"color":"P","inner":"R","row":4,"col":4,"dirs":["up","down"],"ice":0},{"shape":[[0,0],[1,0]],"color":"R","inner":null,"row":3,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0]],"color":"T","inner":null,"row":1,"col":4,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[0,3],[0,4]],"gates":[{"side":"right","start":2,"length":2,"color":"R"},{"side":"top","start":0,"length":3,"color":"T"},{"side":"left","start":2,"length":2,"color":"T"}],"pieces":[{"shape":[[0,0],[0,1],[0,2],[1,0],[1,2]],"color":"R","inner":null,"row":0,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,1],[2,1],[3,0],[3,1]],"color":"T","inner":null,"row":0,"col":5,"dirs":["up","down","left","right"],"ice":3},{"shape":[[0,1],[0,2],[0,3],[1,0],[1,1]],"color":"R","inner":null,"row":4,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,2],[1,0],[1,1],[1,2]],"color":"T","inner":null,"row":0,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[2,1]],"color":"T","inner":null,"row":1,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1]],"color":"R","inner":null,"row":5,"col":0,"dirs":["up","down","left","right"],"ice":1},{"shape":[[0,0],[1,0],[1,1],[1,2]],"color":"T","inner":null,"row":2,"col":2,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[2,5],[2,6],[3,5],[3,6],[4,5],[4,6],[5,5],[5,6]],"gates":[{"side":"left","start":0,"length":3,"color":"R"},{"side":"left","start":4,"length":3,"color":"T"},{"side":"top","start":2,"length":2,"color":"G"}],"pieces":[{"shape":[[0,0],[0,1],[1,1],[2,1],[3,1]],"color":"G","inner":null,"row":2,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0],[2,1],[2,2]],"color":"R","inner":null,"row":3,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1],[2,1]],"color":"G","inner":null,"row":3,"col":2,"dirs":["up","down"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,1]],"color":"T","inner":null,"row":0,"col":0,"dirs":["up","down","left","right"],"ice":2},{"shape":[[0,1],[1,0],[1,1]],"color":"T","inner":null,"row":0,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0]],"color":"T","inner":null,"row":0,"col":5,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[5,6],[6,6]],"gates":[{"side":"top","start":1,"length":3,"color":"R"},{"side":"left","start":0,"length":2,"color":"R"},{"side":"right","start":2,"length":2,"color":"G"},{"side":"top","start":5,"length":2,"color":"B"}],"pieces":[{"shape":[[0,0],[0,1],[1,1]],"color":"G","inner":"R","row":3,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,3],[1,0],[1,1],[1,2],[1,3]],"color":"G","inner":null,"row":1,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[0,3]],"color":"R","inner":null,"row":4,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[0,2],[1,0],[1,1],[1,2]],"color":"R","inner":null,"row":5,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[2,0],[2,1]],"color":"B","inner":null,"row":0,"col":0,"dirs":["up","down","left","right"],"ice":1},{"shape":[[0,0],[1,0],[2,0],[2,1],[2,2]],"color":"R","inner":null,"row":3,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,0]],"color":"R","inner":null,"row":0,"col":2,"dirs":["up","down","left","right"],"ice":2}]},{"size":7,"walls":[[0,1],[0,2],[0,3],[5,0],[5,1],[6,0],[6,1],[6,3],[6,4]],"gates":[{"side":"right","start":1,"length":2,"color":"T"},{"side":"left","start":2,"length":3,"color":"G"},{"side":"bottom","start":6,"length":1,"color":"P"}],"pieces":[{"shape":[[0,1],[1,0],[1,1],[2,1]],"color":"G","inner":null,"row":1,"col":2,"dirs":["up","down","left","right"],"ice":1},{"shape":[[0,0],[0,1],[0,2],[1,2],[1,3]],"color":"G","inner":null,"row":4,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[1,1],[2,0]],"color":"G","inner":null,"row":1,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,1]],"color":"T","inner":null,"row":1,"col":0,"dirs":["left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,0]],"color":"T","inner":null,"row":3,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1]],"color":"T","inner":null,"row":0,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0]],"color":"G","inner":"P","row":4,"col":6,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0]],"color":"P","inner":null,"row":1,"col":6,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[6,5],[6,6]],"gates":[{"side":"left","start":4,"length":3,"color":"R"},{"side":"right","start":1,"length":2,"color":"R"},{"side":"left","start":0,"length":3,"color":"T"},{"side":"bottom","start":0,"length":3,"color":"G"}],"pieces":[{"shape":[[0,0],[0,1],[0,2],[1,1],[1,2]],"color":"G","inner":null,"row":3,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,1],[1,2],[2,0],[2,1]],"color":"T","inner":null,"row":1,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[1,1],[1,2]],"color":"R","inner":null,"row":1,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[0,3],[1,1]],"color":"T","inner":null,"row":4,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0]],"color":"T","inner":null,"row":5,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[1,2]],"color":"T","inner":"G","row":5,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,2],[2,2]],"color":"G","inner":null,"row":0,"col":4,"dirs":["up","down","left","right"],"ice":2}]},{"size":7,"walls":[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]],"gates":[{"side":"left","start":5,"length":2,"color":"R"},{"side":"bottom","start":4,"length":3,"color":"T"},{"side":"top","start":4,"length":3,"color":"G"},{"side":"bottom","start":0,"length":3,"color":"P"},{"side":"left","start":2,"length":2,"color":"P"}],"pieces":[{"shape":[[0,0],[0,1]],"color":"R","inner":null,"row":2,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,2],[1,2],[2,0],[2,1],[2,2]],"color":"G","inner":null,"row":3,"col":4,"dirs":["up","down"],"ice":0},{"shape":[[0,2],[1,0],[1,1],[1,2],[2,2]],"color":"T","inner":null,"row":2,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0],[2,1],[3,0]],"color":"P","inner":null,"row":2,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,2],[1,0],[1,1],[1,2],[1,3]],"color":"P","inner":null,"row":0,"col":3,"dirs":["up","down","left","right"],"ice":3},{"shape":[[0,1],[0,2],[0,3],[1,0],[1,1]],"color":"P","inner":null,"row":5,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2]],"color":"R","inner":null,"row":6,"col":3,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[3,6],[4,6],[5,6],[6,0],[6,1],[6,2]],"gates":[{"side":"bottom","start":4,"length":3,"color":"R"},{"side":"left","start":1,"length":2,"color":"R"},{"side":"top","start":5,"length":2,"color":"T"},{"side":"right","start":0,"length":2,"color":"P"}],"pieces":[{"shape":[[0,1],[1,0],[1,1]],"color":"R","inner":null,"row":1,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0]],"color":"R","inner":"P","row":0,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0],[3,0]],"color":"T","inner":null,"row":1,"col":3,"dirs":["up","down","left","right"],"ice":1},{"shape":[[0,2],[1,0],[1,1],[1,2]],"color":"R","inner":null,"row":4,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[0,3],[1,2]],"color":"P","inner":null,"row":0,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0],[2,1]],"color":"R","inner":null,"row":2,"col":1,"dirs":["up","down","left","right"],"ice":3},{"shape":[[0,1],[1,0],[1,1],[1,2]],"color":"P","inner":null,"row":5,"col":4,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[0,0],[0,1],[0,2],[0,4],[0,5],[4,3]],"gates":[{"side":"right","start":4,"length":3,"color":"R"},{"side":"left","start":2,"length":2,"color":"R"},{"side":"right","start":1,"length":2,"color":"T"}],"pieces":[{"shape":[[0,0],[0,1],[0,2],[1,2]],"color":"R","inner":null,"row":1,"col":1,"dirs":["up","down","left","right"],"ice":1},{"shape":[[0,0],[0,2],[1,0],[1,1],[1,2]],"color":"T","inner":"R","row":5,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1]],"color":"R","inner":null,"row":1,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[1,2]],"color":"R","inner":"T","row":3,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[2,0],[2,1]],"color":"R","inner":null,"row":3,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[1,2]],"color":"R","inner":"T","row":1,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0]],"color":"R","inner":null,"row":1,"col":6,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[0,2],[0,3],[1,2],[1,3],[5,5],[5,6],[6,5],[6,6]],"gates":[{"side":"left","start":4,"length":3,"color":"R"},{"side":"left","start":0,"length":3,"color":"T"},{"side":"top","start":4,"length":2,"color":"G"},{"side":"bottom","start":0,"length":2,"color":"B"}],"pieces":[{"shape":[[0,2],[1,0],[1,1],[1,2],[2,2]],"color":"R","inner":null,"row":2,"col":4,"dirs":["up","down","left","right"],"ice":2},{"shape":[[0,0],[0,1],[0,2],[1,0],[1,2]],"color":"R","inner":null,"row":2,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[1,1]],"color":"R","inner":null,"row":1,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[1,2]],"color":"T","inner":null,"row":4,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1]],"color":"G","inner":null,"row":4,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[2,0]],"color":"B","inner":"G","row":1,"col":0,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[0,0],[1,0],[2,0],[6,2],[6,3],[6,4]],"gates":[{"side":"right","start":4,"length":1,"color":"G"},{"side":"top","start":1,"length":2,"color":"G"},{"side":"right","start":0,"length":3,"color":"P"},{"side":"bottom","start":0,"length":2,"color":"P"}],"pieces":[{"shape":[[0,1],[1,1],[2,0],[2,1],[3,0]],"color":"G","inner":null,"row":1,"col":0,"dirs":["up","down","left","right"],"ice":3},{"shape":[[0,0],[1,0],[1,1],[1,2],[1,3]],"color":"P","inner":null,"row":0,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[2,0],[2,1],[3,1]],"color":"G","inner":null,"row":2,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1]],"color":"P","inner":null,"row":4,"col":2,"dirs":["up","down","left","right"],"ice":1},{"shape":[[0,0],[0,1],[1,1],[2,1],[3,1]],"color":"G","inner":null,"row":2,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0]],"color":"P","inner":null,"row":5,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[2,1]],"color":"P","inner":null,"row":1,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2]],"color":"G","inner":null,"row":0,"col":4,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[0,0],[0,1],[0,2],[0,5],[0,6],[1,0],[1,1],[1,2],[1,5],[1,6],[2,5],[2,6],[5,0],[6,0]],"gates":[{"side":"right","start":3,"length":3,"color":"R"},{"side":"bottom","start":4,"length":2,"color":"T"},{"side":"left","start":2,"length":2,"color":"G"},{"side":"bottom","start":1,"length":1,"color":"P"}],"pieces":[{"shape":[[0,0],[1,0]],"color":"P","inner":null,"row":2,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,0],[1,1],[1,2]],"color":"G","inner":null,"row":4,"col":2,"dirs":["up","down","left","right"],"ice":3},{"shape":[[0,1],[1,0],[1,1],[2,1],[3,1]],"color":"T","inner":null,"row":2,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0]],"color":"R","inner":"G","row":2,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1]],"color":"T","inner":null,"row":1,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0]],"color":"R","inner":null,"row":2,"col":2,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[0,1],[0,2],[0,3]],"gates":[{"side":"bottom","start":3,"length":3,"color":"R"},{"side":"left","start":4,"length":1,"color":"T"},{"side":"right","start":0,"length":2,"color":"T"},{"side":"right","start":4,"length":2,"color":"P"},{"side":"top","start":4,"length":3,"color":"P"}],"pieces":[{"shape":[[0,2],[1,0],[1,1],[1,2]],"color":"R","inner":"T","row":1,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,2]],"color":"T","inner":null,"row":4,"col":4,"dirs":["up","down","left","right"],"ice":3},{"shape":[[0,1],[1,1],[2,0],[2,1],[3,1]],"color":"P","inner":null,"row":0,"col":5,"dirs":["up","down","left","right"],"ice":3},{"shape":[[0,0],[0,1],[0,2],[0,3]],"color":"T","inner":null,"row":1,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[0,2],[1,0],[1,1],[1,2]],"color":"R","inner":null,"row":5,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[0,2],[1,0],[1,1]],"color":"P","inner":null,"row":3,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[2,0]],"color":"R","inner":null,"row":4,"col":0,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[6,0],[6,1],[6,2]],"gates":[{"side":"top","start":3,"length":2,"color":"R"},{"side":"right","start":0,"length":3,"color":"G"},{"side":"left","start":3,"length":2,"color":"P"}],"pieces":[{"shape":[[0,0],[0,1],[0,2],[0,3],[1,1]],"color":"G","inner":"P","row":4,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,0]],"color":"P","inner":null,"row":0,"col":2,"dirs":["up","down","left","right"],"ice":3},{"shape":[[0,1],[1,0],[1,1],[2,0],[2,1]],"color":"R","inner":null,"row":1,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[0,3]],"color":"G","inner":null,"row":5,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,3],[1,0],[1,1],[1,2],[1,3]],"color":"P","inner":null,"row":5,"col":3,"dirs":["up","down","left","right"],"ice":1},{"shape":[[0,0],[0,1],[1,1]],"color":"P","inner":"R","row":1,"col":4,"dirs":["up","down","left","right"],"ice":0}]},{"size":7,"walls":[[0,2],[0,3],[0,4],[1,2],[1,3],[1,4]],"gates":[{"side":"right","start":5,"length":2,"color":"R"},{"side":"bottom","start":4,"length":2,"color":"T"},{"side":"right","start":0,"length":3,"color":"G"},{"side":"left","start":3,"length":3,"color":"P"}],"pieces":[{"shape":[[0,0],[0,1],[0,2],[0,3],[1,2]],"color":"P","inner":"R","row":2,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1]],"color":"G","inner":null,"row":3,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[1,2],[1,3]],"color":"R","inner":null,"row":5,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[1,2],[2,1]],"color":"P","inner":null,"row":2,"col":0,"dirs":["up","down","left","right"],"ice":1},{"shape":[[0,0],[1,0],[1,1],[2,0]],"color":"P","inner":"T","row":0,"col":0,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1]],"color":"R","inner":"G","row":4,"col":3,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1],[2,0]],"color":"G","inner":null,"row":4,"col":0,"dirs":["up","down","left","right"],"ice":3}]},{"size":7,"walls":[[1,0],[2,0]],"gates":[{"side":"top","start":1,"length":2,"color":"R"},{"side":"top","start":4,"length":3,"color":"G"},{"side":"left","start":5,"length":2,"color":"P"},{"side":"right","start":4,"length":3,"color":"P"}],"pieces":[{"shape":[[0,0],[1,0],[2,0],[2,1],[3,1]],"color":"R","inner":null,"row":3,"col":5,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[0,2],[1,2],[2,2]],"color":"G","inner":null,"row":2,"col":2,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,3],[1,0],[1,1],[1,2],[1,3]],"color":"P","inner":null,"row":5,"col":0,"dirs":["left","right"],"ice":0},{"shape":[[0,1],[1,0],[1,1],[2,1]],"color":"G","inner":null,"row":3,"col":1,"dirs":["up","down","left","right"],"ice":1},{"shape":[[0,0],[0,1],[0,2],[0,3],[1,1]],"color":"P","inner":null,"row":0,"col":1,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[1,0],[1,1]],"color":"R","inner":null,"row":5,"col":4,"dirs":["up","down","left","right"],"ice":0},{"shape":[[0,0],[0,1],[1,1],[2,1],[3,1]],"color":"R","inner":null,"row":1,"col":5,"dirs":["up","down","left","right"],"ice":0}]}];
+var COLORS = { R:'var(--c-coral)', T:'var(--c-teal)', G:'var(--c-gold)', P:'var(--c-plum)', B:'var(--c-blue)', L:'var(--c-leaf)' };
+var VEC = { up:[-1,0], down:[1,0], left:[0,-1], right:[0,1] };
+var ARROW = { top:'▲', bottom:'▼', left:'◀', right:'▶' };
+var GAP = 3;
+
+var $ = function(id){ return document.getElementById(id); };
+var boardEl=$('board'), frameEl=$('frame');
+var SIZE=7, CELL=40, walls={}, gates=[], pieces=[], exits=0, moves=0, undoStack=[], level=0, busy=false, drag=null;
+var cleared={};
+
+function load(){ try{ var d=JSON.parse(localStorage.getItem('iro_nuke_v2')||'{}'); level=d.level||0; cleared=d.cleared||{}; }catch(e){} if(level>=LEVELS.length) level=0; }
+function save(){ try{ localStorage.setItem('iro_nuke_v2', JSON.stringify({level:level, cleared:cleared})); }catch(e){} }
+
+function clonePieces(list){ return list.map(function(p){ return {id:p.id,shape:p.shape,color:p.color,inner:p.inner,row:p.row,col:p.col,dirs:p.dirs,ice:p.ice}; }); }
+function snapshot(){ return { pieces:clonePieces(pieces), exits:exits, moves:moves }; }
+
+function startLevel(i){
+  level=i; var L=LEVELS[i]; SIZE=L.size||7;
+  walls={}; (L.walls||[]).forEach(function(w){ walls[w[0]*SIZE+w[1]]=true; });
+  gates=L.gates;
+  pieces=L.pieces.map(function(p,k){ return {id:k,shape:p.shape,color:p.color,inner:p.inner||null,row:p.row,col:p.col,dirs:p.dirs||['up','down','left','right'],ice:p.ice||0}; });
+  exits=0; moves=0; undoStack=[]; closeOverlays(); save(); render();
+}
+
+// ---------- rules ----------
+function frozen(p){ return p.ice > exits; }
+function inside(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
+function occupied(skipId){
+  var o={}; for(var k in walls) o[k]=true;
+  pieces.forEach(function(p){ if(p.id===skipId) return; p.shape.forEach(function(s){ o[(p.row+s[0])*SIZE+(p.col+s[1])]=true; }); });
+  return o;
+}
+function gateOK(side,lane,color){ return gates.some(function(g){ return g.side===side && g.color===color && lane>=g.start && lane<g.start+g.length; }); }
+// how far p can travel in dir from (row,col); steps past the edge only through a gate of its current (outer) colour
+function maxSteps(p,dir,row,col){
+  var v=VEC[dir], o=occupied(p.id), steps=0;
+  for(var k=1;k<=SIZE+6;k++){
+    var ok=true, allOut=true;
+    for(var i=0;i<p.shape.length;i++){
+      var r=row+p.shape[i][0]+v[0]*k, c=col+p.shape[i][1]+v[1]*k;
+      if(inside(r,c)){ allOut=false; if(o[r*SIZE+c]){ ok=false; break; } }
+      else{ var side=v[0]<0?'top':v[0]>0?'bottom':v[1]<0?'left':'right'; var lane=v[0]?c:r;
+        if(!gateOK(side,lane,p.color)){ ok=false; break; } }
+    }
+    if(!ok) break; steps=k; if(allOut) break;
+  }
+  return steps;
+}
+function allInside(p,row,col){ return p.shape.every(function(s){ return inside(row+s[0],col+s[1]); }); }
+function allOutside(p,row,col){ return p.shape.every(function(s){ return !inside(row+s[0],col+s[1]); }); }
+function canMove(p){ return !frozen(p) && p.dirs.some(function(d){ return maxSteps(p,d,p.row,p.col)>0; }); }
+
+// ---------- rendering ----------
+function layout(){ CELL = boardEl.getBoundingClientRect().width / SIZE; }
+function render(){
+  layout(); boardEl.innerHTML='';
+  frameEl.querySelectorAll('.gate').forEach(function(g){ g.remove(); });
+  var frag=document.createDocumentFragment();
+  for(var r=0;r<SIZE;r++) for(var c=0;c<SIZE;c++){
+    var s=document.createElement('div'); s.className='slot'+(walls[r*SIZE+c]?' wall':'');
+    s.style.width=s.style.height=(CELL-GAP*2)+'px'; s.style.transform='translate('+(c*CELL+GAP)+'px,'+(r*CELL+GAP)+'px)';
+    frag.appendChild(s);
+  }
+  boardEl.appendChild(frag);
+  pieces.forEach(drawPiece);
+  gates.forEach(drawGate);
+  $('lvLabel').textContent=level+1; $('moveLabel').textContent=moves;
+  $('undoBtn').disabled = undoStack.length===0;
+  drawLevelButtons();
+}
+function has(shape,r,c){ return shape.some(function(s){ return s[0]===r && s[1]===c; }); }
+function drawPiece(p){
+  p.els=[]; var fz=frozen(p), rad=Math.max(6,CELL*.18), bw=2, inset=Math.max(4,CELL*.16);
+  p.shape.forEach(function(s){
+    var el=document.createElement('div'); el.className='cell'+(fz?' frozen':''); el.dataset.pid=p.id;
+    el.style.width=el.style.height=CELL+'px'; el.style.background=COLORS[p.color];
+    var u=has(p.shape,s[0]-1,s[1]), d=has(p.shape,s[0]+1,s[1]), l=has(p.shape,s[0],s[1]-1), rt=has(p.shape,s[0],s[1]+1);
+    el.style.borderWidth=(u?0:bw)+'px '+(rt?0:bw)+'px '+(d?0:bw)+'px '+(l?0:bw)+'px';
+    el.style.borderRadius=(!u&&!l?rad:0)+'px '+(!u&&!rt?rad:0)+'px '+(!d&&!rt?rad:0)+'px '+(!d&&!l?rad:0)+'px';
+    if(p.inner && !fz){
+      var inn=document.createElement('div'); inn.className='inner'; inn.style.background=COLORS[p.inner];
+      inn.style.top=(u?0:inset-bw)+'px'; inn.style.bottom=(d?0:inset-bw)+'px'; inn.style.left=(l?0:inset-bw)+'px'; inn.style.right=(rt?0:inset-bw)+'px';
+      var ir=Math.max(4,rad-inset*.6);
+      inn.style.borderRadius=(!u&&!l?ir:0)+'px '+(!u&&!rt?ir:0)+'px '+(!d&&!rt?ir:0)+'px '+(!d&&!l?ir:0)+'px';
+      el.appendChild(inn);
+    }
+    el.dataset.dr=s[0]; el.dataset.dc=s[1];
+    boardEl.appendChild(el); p.els.push(el);
+  });
+  p.tag=null;
+  var label=null, cls='';
+  if(fz){ label=String(p.ice-exits); cls='tag ice'; }
+  else if(p.dirs.length===2){ label=(p.dirs.indexOf('up')>=0)?'↕':'↔'; cls='tag arrow'; }
+  if(label){
+    // put the label on the shape cell nearest the centre of mass
+    var cr=0,cc=0; p.shape.forEach(function(s){ cr+=s[0]; cc+=s[1]; }); cr/=p.shape.length; cc/=p.shape.length;
+    var best=p.shape[0],bd=1e9; p.shape.forEach(function(s){ var dd=(s[0]-cr)*(s[0]-cr)+(s[1]-cc)*(s[1]-cc); if(dd<bd){bd=dd;best=s;} });
+    var t=document.createElement('div'); t.className=cls; t.textContent=label; t.dataset.dr=best[0]; t.dataset.dc=best[1];
+    boardEl.appendChild(t); p.tag=t;
+  }
+  place(p,p.row,p.col);
+}
+function place(p,row,col){
+  p.els.forEach(function(el){ el.style.transform='translate('+((col+ +el.dataset.dc)*CELL)+'px,'+((row+ +el.dataset.dr)*CELL)+'px)'; });
+  if(p.tag){ var t=p.tag; t.style.transform='translate('+((col+ +t.dataset.dc+.5)*CELL-15)+'px,'+((row+ +t.dataset.dr+.5)*CELL-15)+'px)'; }
+}
+function setAnim(p,on){ var d=on?'140ms':'0ms'; p.els.forEach(function(el){ el.style.transitionDuration=d; }); if(p.tag) p.tag.style.transitionDuration=d; }
+function drawGate(g){
+  var el=document.createElement('div'); el.className='gate'; el.style.background=COLORS[g.color]; el.textContent=ARROW[g.side];
+  var pad=9, th=18, len=g.length*CELL-4, off=pad+g.start*CELL+2;
+  if(g.side==='top'||g.side==='bottom'){ el.style.width=len+'px'; el.style.height=th+'px'; el.style.left=off+'px'; el.style[g.side]=(-th+5)+'px'; }
+  else{ el.style.height=len+'px'; el.style.width=th+'px'; el.style.top=off+'px'; el.style[g.side]=(-th+5)+'px'; }
+  frameEl.appendChild(el);
+}
+function drawLevelButtons(){
+  var box=$('levels'); box.innerHTML='';
+  LEVELS.forEach(function(_,i){
+    var b=document.createElement('button'); b.className='lv-btn'+(cleared[i]?' done':'')+(i===level?' current':''); b.textContent=i+1;
+    b.addEventListener('click',function(){ if(!busy) startLevel(i); }); box.appendChild(b);
+  });
+}
+
+// ---------- dragging (can turn corners without lifting the finger) ----------
+function segLimits(p){ var m={}; ['up','down','left','right'].forEach(function(d){ m[d]= p.dirs.indexOf(d)>=0 ? maxSteps(p,d,p.row,p.col) : 0; }); return m; }
+boardEl.addEventListener('pointerdown',function(e){
+  e.preventDefault(); if(busy||drag) return;
+  var t=e.target.closest('.cell'); if(!t) return;
+  var p=pieces.find(function(x){ return x.id===+t.dataset.pid; });
+  if(!p||frozen(p)) return;
+  drag={p:p, snap:snapshot(), sx:e.clientX, sy:e.clientY, axis:null, off:0, lim:segLimits(p)};
+  setAnim(p,false);
+  try{ boardEl.setPointerCapture(e.pointerId); }catch(err){}
+});
+boardEl.addEventListener('pointermove',function(e){
+  if(!drag) return; var p=drag.p;
+  var dx=(e.clientX-drag.sx)/CELL, dy=(e.clientY-drag.sy)/CELL;
+  if(!drag.axis){
+    if(Math.max(Math.abs(dx),Math.abs(dy))<0.12) return;
+    var h=Math.abs(dx)>=Math.abs(dy);
+    var hOK=drag.lim.left+drag.lim.right>0, vOK=drag.lim.up+drag.lim.down>0;
+    drag.axis = (h && hOK) || !vOK ? 'h' : 'v';
+  }
+  var main = drag.axis==='h'?dx:dy, perp = drag.axis==='h'?dy:dx;
+  var neg = drag.axis==='h'?drag.lim.left:drag.lim.up, pos = drag.axis==='h'?drag.lim.right:drag.lim.down;
+  var off=Math.max(-neg,Math.min(pos,main));
+  // corner turn: at a whole cell, fully inside, with the finger clearly heading sideways
+  var ri=Math.round(off);
+  if(Math.abs(perp)>0.45 && Math.abs(off-ri)<0.35){
+    var nr=p.row+(drag.axis==='v'?ri:0), nc=p.col+(drag.axis==='h'?ri:0);
+    var pd = drag.axis==='h' ? (perp>0?'down':'up') : (perp>0?'right':'left');
+    if(allInside(p,nr,nc) && p.dirs.indexOf(pd)>=0 && maxSteps(p,pd,nr,nc)>0){
+      p.row=nr; p.col=nc;
+      if(drag.axis==='h') drag.sx+=ri*CELL; else drag.sy+=ri*CELL;
+      drag.axis = drag.axis==='h'?'v':'h'; drag.lim=segLimits(p);
+      dx=(e.clientX-drag.sx)/CELL; dy=(e.clientY-drag.sy)/CELL;
+      main = drag.axis==='h'?dx:dy;
+      neg = drag.axis==='h'?drag.lim.left:drag.lim.up; pos = drag.axis==='h'?drag.lim.right:drag.lim.down;
+      off=Math.max(-neg,Math.min(pos,main));
+    }
+  }
+  drag.off=off;
+  place(p, p.row+(drag.axis==='v'?off:0), p.col+(drag.axis==='h'?off:0));
+});
+function endDrag(){
+  if(!drag) return; var p=drag.p, snap=drag.snap; drag.p=null;
+  var steps=Math.round(drag.off||0), dir=null;
+  if(drag.axis==='h') dir=steps>0?'right':'left'; else if(drag.axis==='v') dir=steps>0?'down':'up';
+  steps=Math.abs(steps);
+  var result='move';
+  if(dir && steps>0){
+    var v=VEC[dir], tr=p.row+v[0]*steps, tc=p.col+v[1]*steps;
+    if(!allInside(p,tr,tc)){
+      // never rest half outside: go all the way through the gate, or come back inside
+      var mx=maxSteps(p,dir,p.row,p.col), lastIn=0;
+      for(var k=1;k<=mx;k++){ if(allInside(p,p.row+v[0]*k,p.col+v[1]*k)) lastIn=k; else break; }
+      if(allOutside(p,p.row+v[0]*mx,p.col+v[1]*mx) && steps>lastIn){
+        result = p.inner ? 'peel' : 'exit';
+        if(result==='peel'){ p.row+=v[0]*lastIn; p.col+=v[1]*lastIn; }
+        else { p.row+=v[0]*mx; p.col+=v[1]*mx; }
+      } else { p.row+=v[0]*lastIn; p.col+=v[1]*lastIn; }
+    } else { p.row=tr; p.col=tc; }
+  }
+  var o=snap.pieces.find(function(x){ return x.id===p.id; });
+  var changed = result!=='move' || p.row!==o.row || p.col!==o.col;
+  setAnim(p,true);
+  if(!changed){ place(p,p.row,p.col); drag=null; return; }
+  undoStack.push(snap); moves++;
+  busy=true; drag=null;
+  if(result==='exit'){
+    place(p,p.row,p.col);
+    setTimeout(function(){ pieces=pieces.filter(function(x){ return x!==p; }); exits++; afterMove(); },170);
+  } else if(result==='peel'){
+    var v2=VEC[dir]; place(p,p.row+v2[0]*0.6,p.col+v2[1]*0.6);
+    setTimeout(function(){ p.color=p.inner; p.inner=null; afterMove(); },170);
+  } else { place(p,p.row,p.col); setTimeout(afterMove,150); }
+}
+boardEl.addEventListener('pointerup',endDrag);
+boardEl.addEventListener('pointercancel',endDrag);
+['selectstart','contextmenu','dragstart'].forEach(function(t){ document.addEventListener(t,function(e){ e.preventDefault(); }); });
+$('stage').addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
+
+function afterMove(){
+  busy=false; render();
+  if(pieces.length===0){
+    cleared[level]=true; save(); drawLevelButtons();
+    var last = level===LEVELS.length-1;
+    $('winTitle').textContent = last?'全ステージクリア!':'クリア!';
+    $('winText').textContent = moves+' 手でクリアしました。';
+    $('winBtn').textContent = last?'ステージ1へ':'次のステージへ';
+    $('winOverlay').classList.add('show');
+  } else if(!pieces.some(canMove)){ $('stuckOverlay').classList.add('show'); }
+}
+function closeOverlays(){ $('winOverlay').classList.remove('show'); $('stuckOverlay').classList.remove('show'); }
+function undo(){
+  if(busy||!undoStack.length) return; var s=undoStack.pop();
+  pieces=clonePieces(s.pieces); exits=s.exits; moves=s.moves; closeOverlays(); render();
+}
+function reset(){
+  if(busy) return;
+  var had = moves>0 || undoStack.length>0, snap=snapshot(), keep=undoStack.slice();
+  startLevel(level);
+  if(had){ undoStack=keep; undoStack.push(snap); render(); }
+}
+$('undoBtn').addEventListener('click',undo);
+$('resetBtn').addEventListener('click',reset);
+$('stuckUndo').addEventListener('click',undo);
+$('stuckReset').addEventListener('click',reset);
+$('winBtn').addEventListener('click',function(){ startLevel(level<LEVELS.length-1?level+1:0); });
+var rt=null; window.addEventListener('resize',function(){ clearTimeout(rt); rt=setTimeout(function(){ if(!drag&&!busy) render(); },120); });
+
+load(); startLevel(level);
+})();
+</script>
+</body>
+</html>
