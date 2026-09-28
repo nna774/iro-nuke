@@ -1,9 +1,9 @@
 // usage: node climb_experimental.js <seedsJSONfiles,comma> <seed> <secs> <out> [rngseed]
-process.argv[4]='7';
 const fs=require('fs');
 const [,, FILES, SEED, SECS, OUT, RS] = process.argv;
-process.argv=[process.argv[0],process.argv[1],'0','0','7','x','1'];
-const L=require(require('path').join(__dirname,'generate_lib.js')); const {solve,mulberry,POOL,COLS}=L; const SIZE=7,N=49;
+const {createEngine,mulberry,POOL}=require(require('path').join(__dirname,'generate_lib.js'));
+const SIZE=7,N=49;
+const {solve}=createEngine(SIZE);
 let base=null;for(const f of FILES.split(',')){const d=JSON.parse(fs.readFileSync(f));for(const r of (Array.isArray(d)?d:[d]))if(r.seed==+SEED)base=r;}
 const rng=mulberry(+RS||+SEED);const pick=a=>a[Math.floor(rng()*a.length)];
 function mkB(lv){const wall=new Uint8Array(N);lv.walls.forEach(([r,c])=>wall[r*SIZE+c]=1);
