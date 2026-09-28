@@ -285,8 +285,9 @@ function endDrag(){
     setTimeout(function(){ p.color=p.inner; p.inner=null; afterMove(); },170);
   } else { place(p,p.row,p.col); setTimeout(afterMove,150); }
 }
-boardEl.addEventListener('pointerup',endDrag);
-boardEl.addEventListener('pointercancel',endDrag);
+document.addEventListener('pointerup',endDrag);
+document.addEventListener('pointercancel',endDrag);
+window.addEventListener('blur',endDrag);
 ['selectstart','contextmenu','dragstart'].forEach(function(t){ document.addEventListener(t,function(e){ e.preventDefault(); }); });
 $('stage').addEventListener('touchmove',function(e){ e.preventDefault(); },{passive:false});
 
